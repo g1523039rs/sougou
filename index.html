@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>筋トレMEMO</title>
+  <style>
+    body { font-family: sans-serif; max-width:600px; margin:2rem auto; }
+    form, ul { margin-top: 1rem; }
+    input, button { padding:0.5rem; margin-right:0.5rem; }
+    li { margin:0.5rem 0; }
+    button.edit-btn, button.delete-btn { margin-left: 0.5rem; }
+    button.delete-btn { color: #c00; }
+  </style>
+</head>
+<body>
+  <h1>筋トレMEMO</h1>
+
+  <form id="entryForm">
+    <label>日付: <input type="date" id="date" required></label><br>
+    <label>部位: <input type="text" id="bodyPart" required></label><br>
+    <label>メニュー: <input type="text" id="menu" required></label><br>
+    <label>回数: <input type="number" id="reps" required></label>
+    <label>重量(kg): <input type="number" id="weight" required></label><br>
+    <button type="submit">保存</button>
+  </form>
+
+  <h2>記録一覧</h2>
+  <ul id="list"></ul>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const STORAGE_KEY = "workoutEntries";
+      let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      let editingIndex = -1;
+
+      const form        = document.getElementById("entryForm");
+      const listEl      = document.getElementById("list");
+      const dateInput   = document.getElementById("date");
+      const bodyInput   = document.getElementById("bodyPart");
+      const menuInput   = document.getElementById("menu");
+      const repsInput   = document.getElementById("reps");
+      const weightInput = document.getElementById("weight");
+      const submitBtn   = form.querySelector('button[type="submit"]');
+
+      render();
+
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const entry = {
+          date: dateInput.value,
+          bodyPart: bodyInput.value,
+          menu: menuInput.value,
+          reps: repsInput.value,
+          weight: weightInput.value,
+        };
+
+        if (editingIndex >= 0) {
+          // 編集モード：上書き
+          entries[editingIndex] = entry;
+          editingIndex = -1;
+          submitBtn.textContent = "保存";
+        } else {
+          // 新規モード：追加
+          entries.push(entry);
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        form.reset();
+        render();
+      });
+
+      function render() {
+        listEl.innerHTML = "";
+        entries
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .forEach((entry, idx) => {
+            const li = document.createElement("li");
+            li.textContent = 
+              `${entry.date} — ${entry.bodyPart}：${entry.menu} ${entry.reps}回 ${entry.weight}kg`;
+
+            // 編集ボタン
+            const editBtn = document.createElement("button");
+            editBtn.textContent = "編集";
+            editBtn.className = "edit-btn";
+            editBtn.addEventListener("click", () => {
+              editingIndex = idx;
+              dateInput.value   = entry.date;
+              bodyInput.value   = entry.bodyPart;
+              menuInput.value   = entry.menu;
+              repsInput.value   = entry.reps;
+              weightInput.value = entry.weight;
+              submitBtn.textContent = "更新";
+            });
+            li.appendChild(editBtn);
+
+            // 削除ボタン
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "削除";
+            deleteBtn.className = "delete-btn";
+            deleteBtn.addEventListener("click", () => {
+              if (confirm("この記録を削除しますか？")) {
+                entries.splice(idx, 1);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+                // 編集モード中ならリセット
+                editingIndex = -1;
+                submitBtn.textContent = "保存";
+                form.reset();
+                render();
+              }
+            });
+            li.appendChild(deleteBtn);
+
+            listEl.appendChild(li);
+          });
+      }
+    });
+  </script>
+</body>
+</html>
